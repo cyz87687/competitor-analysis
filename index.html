@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>竞品分析周报系统</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Hiragino Sans GB','Microsoft YaHei',sans-serif;background:#f0f4f8;color:#1e293b;min-height:100vh}
+.header{background:linear-gradient(135deg,#0284c7,#0ea5e9,#38bdf8);padding:20px 24px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;box-shadow:0 4px 20px rgba(14,165,233,.3)}
+.header h1{color:#fff;font-size:22px;font-weight:700;letter-spacing:.5px}
+.btn-primary{background:#fff;color:#0ea5e9;border:none;padding:10px 24px;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;transition:all .2s;box-shadow:0 2px 8px rgba(0,0,0,.1)}
+.btn-primary:hover{transform:translateY(-1px);box-shadow:0 4px 16px rgba(0,0,0,.15)}
+.container{max-width:1200px;margin:0 auto;padding:20px 16px}
+.view{display:none;animation:fadeIn .3s ease}
+.view.active{display:block}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.stats-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:24px}
+.stat-card{background:#fff;border-radius:16px;padding:20px;box-shadow:0 1px 4px rgba(0,0,0,.06);transition:transform .2s;cursor:pointer;border:2px solid transparent}
+.stat-card:hover{transform:translateY(-2px);border-color:#0ea5e9;box-shadow:0 4px 16px rgba(14,165,233,.12)}
+.stat-label{font-size:13px;color:#64748b;margin-bottom:8px;display:flex;align-items:center;gap:6px}
+.stat-value{font-size:28px;font-weight:700;color:#0f172a}
+.stat-value .unit{font-size:14px;font-weight:400;color:#94a3b8;margin-left:2px}
+.stat-card .go-icon{color:#0ea5e9;font-size:16px;opacity:0;transition:opacity .2s}
+.stat-card:hover .go-icon{opacity:1}
+.competitor-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:16px;margin-bottom:24px}
+.competitor-card{background:#fff;border-radius:16px;padding:20px;box-shadow:0 1px 4px rgba(0,0,0,.06);cursor:pointer;transition:all .25s;border:2px solid transparent}
+.competitor-card:hover{transform:translateY(-3px);box-shadow:0 8px 24px rgba(14,165,233,.12);border-color:#0ea5e9}
+.competitor-card .card-top{display:flex;align-items:center;gap:12px;margin-bottom:14px}
+.competitor-card .icon{width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px}
+.competitor-card .name{font-size:16px;font-weight:600}
+.competitor-card .review-count{font-size:12px;color:#94a3b8;margin-top:2px}
+.progress-bar{height:8px;background:#e2e8f0;border-radius:4px;overflow:hidden;margin-top:4px}
+.progress-bar .fill{height:100%;border-radius:4px;transition:width .6s ease}
+.section-title{font-size:17px;font-weight:700;margin-bottom:16px;display:flex;align-items:center;gap:8px}
+.section-title::before{content:'';width:4px;height:20px;background:#0ea5e9;border-radius:2px}
+.weekly-overview{background:#fff;border-radius:16px;padding:24px;box-shadow:0 1px 4px rgba(0,0,0,.06);margin-bottom:24px}
+.chart-container{height:200px;margin-bottom:20px}
+.pain-points-list{display:flex;flex-direction:column;gap:10px}
+.pain-point-item{display:flex;align-items:center;gap:10px;padding:10px 14px;background:#f8fafc;border-radius:10px;font-size:14px}
+.severity{padding:3px 10px;border-radius:6px;font-size:11px;font-weight:600;color:#fff}
+.severity.high{background:#ef4444}
+.severity.medium{background:#f97316}
+.severity.low{background:#eab308}
+.reports-list{display:flex;flex-direction:column;gap:12px}
+.report-item{background:#fff;border-radius:16px;padding:18px 20px;box-shadow:0 1px 4px rgba(0,0,0,.06);cursor:pointer;transition:all .2s;display:flex;align-items:center;justify-content:space-between}
+.report-item:hover{transform:translateY(-2px);box-shadow:0 4px 16px rgba(14,165,233,.1)}
+.report-item .report-info .report-date{font-size:15px;font-weight:600;margin-bottom:4px}
+.report-item .report-info .report-summary{font-size:13px;color:#64748b}
+.report-item .arrow{color:#94a3b8;font-size:18px}
+.back-btn{display:inline-flex;align-items:center;gap:6px;background:none;border:none;color:#0ea5e9;font-size:15px;font-weight:600;cursor:pointer;padding:8px 0;margin-bottom:16px;transition:gap .2s}
+.back-btn:hover{gap:10px}
+.detail-header{display:flex;align-items:center;gap:14px;margin-bottom:24px}
+.detail-header .icon{width:56px;height:56px;border-radius:16px;display:flex;align-items:center;justify-content:center;font-size:28px}
+.detail-header .name{font-size:24px;font-weight:700}
+.detail-header .review-count{font-size:14px;color:#64748b;margin-top:2px}
+.detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px}
+.detail-card{background:#fff;border-radius:16px;padding:20px;box-shadow:0 1px 4px rgba(0,0,0,.06)}
+.detail-card.full-width{grid-column:1/-1}
+.pie-chart-container{height:220px;display:flex;align-items:center;justify-content:center}
+.pain-list{display:flex;flex-direction:column;gap:8px}
+.pain-item{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:#f8fafc;border-radius:10px;font-size:14px}
+.feature-list{display:flex;flex-direction:column;gap:8px}
+.feature-item{padding:10px 14px;background:#f8fafc;border-radius:10px;font-size:14px}
+.feature-item .feat-name{font-weight:600;margin-bottom:2px}
+.feature-item .feat-ver{font-size:12px;color:#64748b}
+.review-list{display:flex;flex-direction:column;gap:10px}
+.review-item{padding:14px;background:#f8fafc;border-radius:10px}
+.review-item .review-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
+.review-item .stars{color:#f59e0b;font-size:13px;letter-spacing:1px}
+.review-item .sentiment{padding:3px 10px;border-radius:6px;font-size:11px;font-weight:600;color:#fff}
+.sentiment.positive{background:#22c55e}
+.sentiment.neutral{background:#94a3b8}
+.sentiment.negative{background:#ef4444}
+.review-item .review-text{font-size:13px;color:#475569;line-height:1.5;margin-bottom:6px}
+.review-item .review-meta{display:flex;align-items:center;gap:12px;font-size:12px;color:#94a3b8}
+.review-item .review-meta svg{width:12px;height:12px;vertical-align:middle}
+.report-detail-content{background:#fff;border-radius:16px;padding:28px;box-shadow:0 1px 4px rgba(0,0,0,.06);margin-bottom:24px}
+.report-detail-content h2{font-size:20px;margin-bottom:16px;color:#0f172a}
+.report-detail-content h3{font-size:16px;margin:16px 0 10px;color:#1e293b}
+.report-detail-content p{font-size:14px;line-height:1.8;color:#475569;margin-bottom:10px}
+.report-detail-content ul{padding-left:20px;margin-bottom:10px}
+.report-detail-content li{font-size:14px;line-height:1.8;color:#475569}
+.report-actions{display:flex;gap:12px;margin-bottom:24px}
+.btn-action{padding:10px 20px;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;transition:all .2s;border:none}
+.btn-copy{background:#0ea5e9;color:#fff}
+.btn-copy:hover{background:#0284c7}
+.btn-download{background:#fff;color:#0ea5e9;border:2px solid #0ea5e9}
+.btn-download:hover{background:#f0f9ff}
+.toast{position:fixed;top:80px;right:20px;background:#22c55e;color:#fff;padding:12px 24px;border-radius:10px;font-size:14px;font-weight:600;box-shadow:0 4px 16px rgba(34,197,94,.3);z-index:1000;transform:translateX(120%);transition:transform .3s ease}
+.toast.show{transform:translateX(0)}
+.list-page-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px}
+.list-page-header h2{font-size:20px;font-weight:700}
+.list-page-header .count{font-size:14px;color:#64748b}
+.data-table{width:100%;border-collapse:separate;border-spacing:0;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.06)}
+.data-table thead th{background:#f8fafc;padding:12px 16px;text-align:left;font-size:13px;font-weight:600;color:#64748b;border-bottom:1px solid #e2e8f0}
+.data-table tbody td{padding:12px 16px;font-size:14px;border-bottom:1px solid #f1f5f9;color:#334155}
+.data-table tbody tr:last-child td{border-bottom:none}
+.data-table tbody tr:hover{background:#f8fafc}
+.pagination{display:flex;align-items:center;justify-content:center;gap:8px;margin-top:20px}
+.pagination button{min-width:36px;height:36px;border:1px solid #e2e8f0;background:#fff;border-radius:8px;font-size:14px;cursor:pointer;transition:all .2s;color:#334155}
+.pagination button:hover{border-color:#0ea5e9;color:#0ea5e9}
+.pagination button.active{background:#0ea5e9;color:#fff;border-color:#0ea5e9}
+.pagination button:disabled{opacity:.4;cursor:not-allowed}
+.pagination .page-info{font-size:13px;color:#64748b;margin:0 8px}
+.review-card-list{display:flex;flex-direction:column;gap:12px}
+.review-card{background:#fff;border-radius:16px;padding:18px 20px;box-shadow:0 1px 4px rgba(0,0,0,.06)}
+.review-card .rc-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.review-card .rc-app{font-size:13px;color:#0ea5e9;font-weight:600}
+.review-card .rc-stars{color:#f59e0b;font-size:13px;letter-spacing:1px}
+.review-card .rc-text{font-size:14px;color:#334155;line-height:1.6;margin-bottom:8px}
+.review-card .rc-meta{display:flex;align-items:center;gap:16px;font-size:12px;color:#94a3b8}
+.report-card-list{display:flex;flex-direction:column;gap:12px}
+.report-card{background:#fff;border-radius:16px;padding:18px 20px;box-shadow:0 1px 4px rgba(0,0,0,.06);cursor:pointer;transition:all .2s}
+.report-card:hover{transform:translateY(-2px);box-shadow:0 4px 16px rgba(14,165,233,.1)}
+.report-card .rc-period{font-size:15px;font-weight:600;margin-bottom:4px}
+.report-card .rc-summary{font-size:13px;color:#64748b}
+.pain-card-list{display:flex;flex-direction:column;gap:12px}
+.pain-card{background:#fff;border-radius:16px;padding:18px 20px;box-shadow:0 1px 4px rgba(0,0,0,.06)}
+.pain-card .pc-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.pain-card .pc-app{font-size:13px;color:#0ea5e9;font-weight:600}
+.pain-card .pc-text{font-size:15px;font-weight:600;color:#1e293b;margin-bottom:6px}
+.pain-card .pc-desc{font-size:13px;color:#64748b;line-height:1.5;margin-bottom:8px}
+.pain-card .pc-meta{display:flex;align-items:center;gap:12px;font-size:12px;color:#94a3b8}
+.insight-card{background:#fff;border-radius:16px;padding:24px;box-shadow:0 1px 4px rgba(0,0,0,.06)}
+.insight-card h3{font-size:17px;font-weight:700;margin-bottom:16px;display:flex;align-items:center;gap:8px}
+.insight-card h3::before{content:'';width:4px;height:20px;border-radius:2px}
+.insight-card.dynamics h3::before{background:#0ea5e9}
+.insight-card.opportunity h3::before{background:#f97316}
+.insight-item{padding:12px 14px;background:#f8fafc;border-radius:10px;margin-bottom:8px;font-size:14px;line-height:1.6;color:#334155}
+.insight-item:last-child{margin-bottom:0}
+.insight-item .tag{display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600;margin-right:6px;color:#fff}
+.insight-item .tag.blue{background:#0ea5e9}
+.insight-item .tag.purple{background:#8b5cf6}
+.insight-item .tag.green{background:#22c55e}
+.insight-item .tag.orange{background:#f97316}
+.insight-item .tag.red{background:#ef4444}
+.insight-item strong{color:#0f172a}
+.opportunity-highlight{padding:14px 16px;background:linear-gradient(135deg,#fff7ed,#ffedd5);border:2px solid #fb923c;border-radius:12px;margin-top:12px}
+.opportunity-highlight .oh-title{font-size:14px;font-weight:700;color:#9a3412;margin-bottom:6px}
+.opportunity-highlight .oh-text{font-size:13px;color:#7c2d12;line-height:1.6}
+@media(max-width:768px){
+.stats-grid{grid-template-columns:1fr}
+.competitor-grid{grid-template-columns:1fr}
+.detail-grid{grid-template-columns:1fr}
+.header h1{font-size:18px}
+.stat-value{font-size:22px}
+.data-table{font-size:12px}
+.data-table thead th,.data-table tbody td{padding:8px 10px}
+#insightSection{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+<h1>竞品分析周报系统</h1>
+<button class="btn-primary" onclick="generateReport()">生成周报</button>
+</div>
+
+<div class="container">
+<div id="dashboard" class="view active">
+<div class="stats-grid">
+<div class="stat-card" onclick="showStatDetail('reviews')">
+<div class="stat-label">本周评论数 <span class="go-icon">›</span></div>
+<div class="stat-value">35,570<span class="unit">条</span></div>
+</div>
+<div class="stat-card" onclick="showStatDetail('reports')">
+<div class="stat-label">累计周报 <span class="go-icon">›</span></div>
+<div class="stat-value">24<span class="unit">份</span></div>
+</div>
+<div class="stat-card" onclick="showStatDetail('painpoints')">
+<div class="stat-label">发现痛点 <span class="go-icon">›</span></div>
+<div class="stat-value">42<span class="unit">个</span></div>
+</div>
+</div>
+
+<div id="insightSection" style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px"></div>
+
+<div class="weekly-overview">
+<div class="section-title">本周概览</div>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:24px">
+<div>
+<div style="font-size:13px;color:#64748b;margin-bottom:8px;font-weight:500">各竞品正面评价占比</div>
+<div class="chart-container" style="height:220px"><canvas id="barChart"></canvas></div>
+</div>
+<div>
+<div style="font-size:13px;color:#64748b;margin-bottom:8px;font-weight:500">关键痛点</div>
+<div class="pain-points-list" id="painPointsList"></div>
+</div>
+</div>
+<div id="competitorTags" style="margin-top:20px;display:flex;flex-wrap:wrap;gap:10px"></div>
+</div>
+
+<div class="section-title">历史周报</div>
+<div class="reports-list" id="reportsList"></div>
+</div>
+
+<div id="competitorDetail" class="view">
+<button class="back-btn" onclick="showView('dashboard')">
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>
+返回总览
+</button>
+<div class="detail-header" id="detailHeader"></div>
+<div class="detail-grid" id="detailGrid"></div>
+</div>
+
+<div id="statDetail" class="view">
+<button class="back-btn" onclick="showView('dashboard')">
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>
+返回总览
+</button>
+<div id="statDetailContent"></div>
+</div>
+
+<div id="reportDetail" class="view">
+<button class="back-btn" onclick="showView('dashboard')">
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>
+返回总览
+</button>
+<div id="reportDetailContent"></div>
+</div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+var platforms=['App Store','华为应用市场','小米应用商店','OPPO软件商店','vivo应用商店','应用宝','豌豆荚'];
+var sentimentLabels={positive:'正面',neutral:'中性',negative:'负面'};
+
+function randomDate(start,end){
+return new Date(start.getTime()+Math.random()*(end.getTime()-start.getTime()));
+}
+function formatDate(d){
+return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+function randomPlatform(){
+return platforms[Math.floor(Math.random()*platforms.length)];
+}
+
+var allReviews=[];
+var reviewTexts={
+ths:{
+positive:['数据更新很快，专业度很高','AI选股功能确实有用','自选股管理很方便','行情推送及时','技术指标很全面','Level-2数据免费开放太好了','K线图分析功能强大','选股器功能越来越好了','资讯推送很及时','基金筛选功能不错'],
+neutral:['功能很全面，但广告真的太多了','AI选股功能不错，但经常卡顿','界面信息密度太高，新手不太友好','自选股分组功能可以再优化','行情页面加载有点慢','资讯推送可以更精准一些','社区讨论质量参差不齐','条件单功能还需要完善','画线工具可以更丰富','模拟交易功能比较基础'],
+negative:['广告弹窗太多了，严重影响使用','卡顿严重，行情刷新时经常无响应','推送消息太频繁，关都关不掉','更新后更卡了，还多了很多没用的功能','VIP功能太贵了，性价比不高','行情数据偶尔有延迟','登录经常需要验证，很烦','夜间模式适配不好','内存占用太高了','闪退问题频繁']
+},
+dfcf:{
+positive:['资讯更新速度行业领先','股吧社区很活跃','基金数据很全面','开户优惠力度大','行情数据稳定','研报内容质量高','ETF筛选工具好用','组合跟踪功能实用','直播课程很有价值','交易体验流畅'],
+neutral:['资讯很丰富，但社区里水帖太多了','开户流程需要优化','行情页面广告位太多','基金筛选条件不够灵活','资讯推送可以更精准','社区管理需要加强','部分功能入口不好找','自选股同步偶尔出问题','交易手续费偏高','模拟盘功能比较基础'],
+negative:['开户流程太复杂了，搞了半小时才弄好','股吧广告和无意义内容太多','APP体积太大，占用存储','推送通知关不掉','行情刷新有延迟','客服回复太慢','VIP功能性价比不高','界面太复杂，操作繁琐','数据导出功能不好用','视频广告强制播放']
+},
+zlcf:{
+positive:['智能盯盘功能很实用','界面清爽，操作流畅','交易下单体验好','客户服务响应快','行情数据比较准确','条件单功能完善','新股申购很方便','资产分析图表清晰','资讯质量不错','风控提醒及时'],
+neutral:['很多功能入口藏得太深，不好找','部分高级功能需要额外开通','自选股管理可以更灵活','行情页面信息密度可以更高','资讯更新频率可以加快','模拟交易功能比较简单','社区互动功能较弱','缺少量化回测工具','基金筛选功能一般','夜间模式不够完善'],
+negative:['行情偶尔有延迟','APP启动速度偏慢','部分功能闪退','交易确认弹窗太多','缺少网格交易功能','自选股数量限制太少','推送通知设置不灵活','K线指标不够丰富','没有Level-2数据','账户分析功能太简单']
+},
+hbzt:{
+positive:['网格策略很好用','条件单升级后好用多了','交易手续费低','ETF品种覆盖全','智能提醒功能实用','策略回测功能不错','界面简洁易上手','下单速度快','风控功能完善','客服响应及时'],
+neutral:['网格策略太少了，希望能增加更多','行情有时候会延迟','自选股管理功能一般','资讯内容偏少','缺少社区讨论功能','模拟盘功能比较基础','K线分析工具不够丰富','缺少选股器功能','基金筛选条件太少','账户分析不够深入'],
+negative:['行情延迟严重，做短线很受影响','APP经常闪退','功能太少了，和头部差距大','没有Level-2行情','资讯更新太慢','自选股同步经常失败','交易品种不够丰富','缺少智能选股功能','界面设计过时','推送通知不及时']
+}
+};
+
+function generateReviews(){
+var now=new Date(2026,5,3);
+var oneMonthAgo=new Date(2026,4,3);
+var id=0;
+var compKeys=['ths','dfcf','zlcf','hbzt'];
+compKeys.forEach(function(key){
+var texts=reviewTexts[key];
+var counts={positive:Math.floor(8+Math.random()*5),neutral:Math.floor(6+Math.random()*4),negative:Math.floor(4+Math.random()*4)};
+['positive','neutral','negative'].forEach(function(sent){
+for(var i=0;i<counts[sent];i++){
+var txt=texts[sent][i%texts[sent].length];
+var d=randomDate(oneMonthAgo,now);
+var stars=sent==='positive'?4+Math.floor(Math.random()*2):sent==='neutral'?3:sent==='negative'?1+Math.floor(Math.random()*2):3;
+allReviews.push({id:++id,competitorKey:key,text:txt,stars:stars,sentiment:sent,date:formatDate(d),platform:randomPlatform()});
+}
+});
+});
+allReviews.sort(function(a,b){return b.date.localeCompare(a.date)});
+}
+
+generateReviews();
+
+var competitors=[
+{id:'ths',name:'同花顺',icon:'📊',reviews:12580,positive:65,color:'#0ea5e9',bgColor:'#f0f9ff',
+painPoints:[
+{text:'广告弹窗过多',desc:'启动页、信息流广告频繁弹出，用户多次投诉',severity:'high',count:320},
+{text:'性能卡顿',desc:'行情刷新时容易卡顿，切换页面响应慢',severity:'high',count:280},
+{text:'推送消息频繁',desc:'无关消息推送过多，打扰用户',severity:'medium',count:150}
+],
+newFeatures:[
+{name:'主力筹码功能',version:'v11.54.04',date:'2026-05-28',desc:'个股K线—打开筹码分布—选择主力筹码，识别主力建仓派发'},
+{name:'截图提问',version:'v11.54.04',date:'2026-05-28',desc:'全新截图提问功能上线，投资问题秒级响应，智能解读市场信息'},
+{name:'浮窗盯盘',version:'v11.54.04',date:'2026-05-28',desc:'看新闻、看视频、聊天同时盯盘，行情变化随时掌控'},
+{name:'市场情绪风向',version:'v11.54.04',date:'2026-05-28',desc:'帮助判断大盘情绪，把握市场节奏'},
+{name:'聪明资金',version:'v11.54.04',date:'2026-05-28',desc:'把握国家队等聪明资金的异动流入流出情况'},
+{name:'集合竞价盘前总结',version:'v11.54.04',date:'2026-05-28',desc:'集合竞价功能新增盘前竞价总结，助您把握竞价机会'}
+],
+neutral:20,negative:15},
+{id:'dfcf',name:'东方财富',icon:'💰',reviews:9840,positive:60,color:'#8b5cf6',bgColor:'#f5f3ff',
+painPoints:[
+{text:'开户流程复杂',desc:'需要填写太多资料，步骤繁琐，用户多次反映',severity:'high',count:250},
+{text:'股吧水帖广告多',desc:'股吧广告和无意义内容太多，社区质量下降',severity:'medium',count:180},
+{text:'APP体积过大',desc:'安装包体积大，占用存储空间',severity:'low',count:90}
+],
+newFeatures:[
+{name:'板块/指数AI解读',version:'v11.1.5',date:'2026-05-15',desc:'板块、指数及大涨股异动增加AI解读，智能解读更高效'},
+{name:'港美股行情升级',version:'v11.1.5',date:'2026-05-15',desc:'港美股行情体验升级，支持换手率及筹码分布功能'},
+{name:'视频发布升级',version:'v11.1.5',date:'2026-05-15',desc:'视频发布体验升级，支持编辑封面、话题展示等功能'},
+{name:'妙想AI大模型',version:'v11.1.5',date:'2026-05-15',desc:'更懂股民的金融大模型，深度思考、专业数据、更懂金融'}
+],
+neutral:25,negative:15},
+{id:'zlcf',name:'涨乐财富通',icon:'📈',reviews:7520,positive:68,color:'#22c55e',bgColor:'#f0fdf4',
+painPoints:[
+{text:'功能入口深',desc:'常用功能藏得太深，找不到',severity:'medium',count:120},
+{text:'社区互动弱',desc:'社区互动功能较弱，缺少用户交流氛围',severity:'low',count:80}
+],
+newFeatures:[
+{name:'全新行情首页',version:'v8.8.65',date:'2026-05-23',desc:'涨停聚焦、主力建仓、异动直击、资金流向等核心模块全覆盖'},
+{name:'热搜股票榜单',version:'v8.8.65',date:'2026-05-23',desc:'智能搜索一键直达，热搜股票榜单锁定当下热门标的'},
+{name:'专业副图指标',version:'v8.8.65',date:'2026-05-23',desc:'BOLL线、两融余额、主力密码、暗盘资金等专业指标一应俱全'},
+{name:'交易页面焕新',version:'v8.8.65',date:'2026-05-23',desc:'买入、卖出、撤单、持仓布局清晰，快捷仓位编辑一键勾选'},
+{name:'自动拆单',version:'v8.8.65',date:'2026-05-23',desc:'智能处理大额订单，有效降低冲击成本，交易更稳妥'}
+],
+neutral:22,negative:10},
+{id:'hbzt',name:'华宝智投',icon:'🎯',reviews:5630,positive:55,color:'#f97316',bgColor:'#fff7ed',
+painPoints:[
+{text:'行情延迟',desc:'有时候行情会有几秒延迟，做短线受影响',severity:'high',count:200},
+{text:'功能覆盖不足',desc:'与头部竞品相比功能偏少，缺少Level-2行情',severity:'high',count:160},
+{text:'资讯内容偏少',desc:'资讯更新慢，内容覆盖面不够广',severity:'medium',count:120}
+],
+newFeatures:[
+{name:'ETF专区+筛选器',version:'v7.0.20',date:'2026-05-06',desc:'专属ETF专区上线，内置ETF筛选器，快速定位符合条件的基金'},
+{name:'国债逆回购升级',version:'v7.0.20',date:'2026-05-06',desc:'国债逆回购功能全面升级，操作流程更加流畅'},
+{name:'全局搜索',version:'v7.0.20',date:'2026-05-06',desc:'搜索功能升级，股票、ETF、理财产品、内容一键全局搜索'},
+{name:'历史成交筛选',version:'v7.0.20',date:'2026-05-06',desc:'历史成交记录新增筛选功能，查询效率大幅提升'}
+],
+neutral:25,negative:20}
+];
+
+var allPainPoints=[];
+competitors.forEach(function(c){
+c.painPoints.forEach(function(p){
+allPainPoints.push({competitor:c.name,competitorId:c.id,text:p.text,desc:p.desc,severity:p.severity,count:p.count});
+});
+});
+allPainPoints.sort(function(a,b){var order={high:0,medium:1,low:2};return order[a.severity]-order[b.severity]||(b.count-a.count)});
+
+var reports=[];
+for(var i=0;i<24;i++){
+var end=new Date(2026,5,1);
+end.setDate(end.getDate()-i*7);
+var start=new Date(end);
+start.setDate(start.getDate()-6);
+if(start<new Date(2025,10,1))break;
+reports.push({
+id:24-i,
+dateStr:formatDate(start)+' ~ '+formatDate(end),
+summary:i===0?'本周四大竞品共新增评论35,570条，同花顺广告问题持续发酵':i===1?'东方财富上线基金组合推荐功能，用户反馈积极':'本周竞品动态分析'
+});
+}
+
+var reportContents={
+24:{title:'竞品分析周报 #24',date:'2026-05-26 ~ 2026-06-01',body:'<h2>竞品分析周报 #24</h2><p><strong>报告周期：</strong>2026年5月26日 - 2026年6月1日</p><h3>一、竞品动态报告</h3><ul><li><strong>同花顺 v11.54.04</strong>（5月28日更新）：新增主力筹码、截图提问、浮窗盯盘、市场情绪风向、聪明资金、集合竞价盘前总结等6项新功能，AI+数据能力持续强化，但广告弹窗和卡顿问题仍是用户最大痛点</li><li><strong>东方财富 v11.1.5</strong>（5月15日更新）：新增板块/指数AI解读、港美股行情升级（换手率+筹码分布）、妙想AI大模型，AI能力与港美股成为重点方向</li><li><strong>涨乐财富通 v8.8.65</strong>（5月23日更新）：上线全新行情首页、热搜股票榜单、专业副图指标、交易页面焕新、自动拆单，看盘+交易体验全面升级</li><li><strong>华宝智投 v7.0.20</strong>（5月6日更新）：上线ETF专区+筛选器、全局搜索、国债逆回购升级，7.0版本定位"为指数投资而生"</li></ul><h3>二、华宝智投核心机会</h3><ul><li><strong>痛点即机会</strong>：头部竞品广告过多（同花顺320人投诉）、卡顿严重（280人投诉），华宝智投无广告+轻量化体验可成为核心差异化卖点</li><li><strong>ETF赛道差异化</strong>：7.0版本聚焦ETF专区，与同花顺/东方财富的全品类策略形成差异化，"为指数投资而生"定位清晰</li><li><strong>智能交易壁垒</strong>：网格交易、条件单等智能交易工具是华宝独有优势，头部竞品均未深度布局</li><li><strong>AI功能追赶</strong>：同花顺和东方财富均推出AI大模型功能，华宝智投在AI辅助决策方面仍有差距，建议优先补齐</li></ul><h3>三、本周概览</h3><p>本周四大竞品共新增用户评论35,570条，较上周增长8.3%。整体正面评价占比62%，较上周提升2个百分点。</p><h3>四、关键发现</h3><ul><li>广告干扰成为用户最集中的不满，同花顺相关投诉占比达32%</li><li>AI功能成为各平台差异化竞争重点，同花顺和东方财富均推出AI大模型</li><li>行情数据实时性是专业用户的核心诉求</li><li>ETF投资工具化趋势明显，华宝智投7.0版本率先布局</li></ul><h3>五、建议</h3><p>1. 营销层面：主打"无广告·不卡顿·智能交易"三连击，精准打击同花顺痛点<br>2. 产品层面：ETF专区+筛选器持续深化，增加ETF对比/回测等工具<br>3. 技术层面：优先补齐行情延迟问题，引入AI解读能力缩小与头部差距</p>'},
+23:{title:'竞品分析周报 #23',date:'2026-05-19 ~ 2026-05-25',body:'<h2>竞品分析周报 #23</h2><p><strong>报告周期：</strong>2026年5月19日 - 2026年5月25日</p><h3>一、竞品动态报告</h3><ul><li><strong>同花顺</strong>：v11.54.04版本上线，新增主力筹码、截图提问等6项功能</li><li><strong>东方财富</strong>：妙想AI大模型上线，板块/指数AI解读功能引发关注</li><li><strong>涨乐财富通</strong>：鸿蒙版大更新，新增任务助手、涨停猎手agent等AI功能</li><li><strong>华宝智投</strong>：7.0版本持续优化，ETF专区用户反馈积极</li></ul><h3>二、华宝智投核心机会</h3><ul><li>AI Agent成为新趋势，涨乐财富通推出涨停猎手agent，华宝可考虑在智能交易领域引入Agent能力</li><li>同花顺广告投诉持续攀升，华宝"清爽无广告"定位可加大传播</li></ul><h3>三、关键发现</h3><ul><li>AI Agent成为券商APP新趋势</li><li>社区内容质量管控是共同挑战</li><li>移动端体验优化仍是重点方向</li></ul><h3>四、建议</h3><p>1. 跟进AI Agent功能开发，结合智能交易场景<br>2. 加强ETF工具链建设<br>3. 持续优化移动端流畅度</p>'}
+};
+
+var barChartInstance=null;
+var pieChartInstance=null;
+var currentStatPage=1;
+var currentStatType='';
+var PAGE_SIZE=20;
+
+function showView(viewId){
+document.querySelectorAll('.view').forEach(function(v){v.classList.remove('active')});
+document.getElementById(viewId).classList.add('active');
+window.scrollTo({top:0,behavior:'smooth'});
+}
+
+function renderCompetitorTags(){
+var container=document.getElementById('competitorTags');
+if(!container)return;
+container.innerHTML='';
+competitors.forEach(function(c){
+var tag=document.createElement('div');
+tag.style.cssText='display:flex;align-items:center;gap:8px;padding:8px 16px;background:'+c.bgColor+';border-radius:10px;cursor:pointer;transition:all .2s;border:2px solid transparent';
+tag.onmouseenter=function(){this.style.borderColor=c.color;this.style.transform='translateY(-1px)'};
+tag.onmouseleave=function(){this.style.borderColor='transparent';this.style.transform='translateY(0)'};
+tag.onclick=function(){showCompetitorDetail(c.id)};
+tag.innerHTML='<span style="font-size:18px">'+c.icon+'</span><span style="font-size:14px;font-weight:600;color:#1e293b">'+c.name+'</span><span style="font-size:12px;color:#64748b">'+c.reviews.toLocaleString()+'条评论</span><span style="font-size:12px;color:'+c.color+';font-weight:600">'+c.positive+'%正面</span>';
+container.appendChild(tag);
+});
+}
+
+function renderPainPoints(){
+var list=document.getElementById('painPointsList');
+list.innerHTML='';
+allPainPoints.slice(0,6).forEach(function(p){
+list.innerHTML+='<div class="pain-point-item"><span class="severity '+p.severity+'">'+(p.severity==='high'?'高危':p.severity==='medium'?'中危':'低危')+'</span><span>'+p.competitor+'：'+p.text+'</span></div>';
+});
+}
+
+function renderReports(){
+var list=document.getElementById('reportsList');
+list.innerHTML='';
+reports.slice(0,5).forEach(function(r){
+list.innerHTML+='<div class="report-item" onclick="showReportDetail('+r.id+')"><div class="report-info"><div class="report-date">'+r.dateStr+'</div><div class="report-summary">'+r.summary+'</div></div><div class="arrow">›</div></div>';
+});
+}
+
+function renderBarChart(){
+var ctx=document.getElementById('barChart').getContext('2d');
+if(barChartInstance)barChartInstance.destroy();
+barChartInstance=new Chart(ctx,{
+type:'bar',
+data:{
+labels:competitors.map(function(c){return c.name}),
+datasets:[{
+label:'正面评价占比 (%)',
+data:competitors.map(function(c){return c.positive}),
+backgroundColor:competitors.map(function(c){return c.color+'cc'}),
+borderColor:competitors.map(function(c){return c.color}),
+borderWidth:2,
+borderRadius:8,
+barThickness:40
+}]
+},
+options:{
+indexAxis:'y',
+responsive:true,
+maintainAspectRatio:false,
+plugins:{legend:{display:false},tooltip:{callbacks:{label:function(ctx){return ctx.parsed.x+'%'}}}},
+scales:{
+x:{beginAtZero:true,max:100,grid:{color:'#f1f5f9'},ticks:{callback:function(v){return v+'%'},font:{size:12}}},
+y:{grid:{display:false},ticks:{font:{size:13,weight:'600'}}}
+}
+}
+});
+}
+
+function showCompetitorDetail(id){
+var c=competitors.find(function(x){return x.id===id});
+if(!c)return;
+var cReviews=allReviews.filter(function(r){return r.competitorKey===id});
+var header=document.getElementById('detailHeader');
+header.innerHTML='<div class="icon" style="background:'+c.bgColor+'">'+c.icon+'</div><div><div class="name">'+c.name+'</div><div class="review-count">'+c.reviews.toLocaleString()+' 条用户评论</div></div>';
+var grid=document.getElementById('detailGrid');
+var painHtml=c.painPoints.map(function(p){
+return '<div class="pain-item"><div><span style="font-weight:600">'+p.text+'</span><span style="font-size:12px;color:#94a3b8;margin-left:8px">'+p.count+'人反馈</span></div><span class="severity '+p.severity+'">'+(p.severity==='high'?'高危':p.severity==='medium'?'中危':'低危')+'</span></div>';
+}).join('');
+var featHtml=c.newFeatures.map(function(f){
+return '<div class="feature-item"><div class="feat-name">'+f.name+'</div><div style="font-size:13px;color:#64748b;margin:4px 0">'+f.desc+'</div><div class="feat-ver">'+f.version+' · '+f.date+'</div></div>';
+}).join('');
+var revHtml=cReviews.slice(0,10).map(function(r){
+var stars='';
+for(var i=0;i<5;i++)stars+=i<r.stars?'★':'☆';
+return '<div class="review-item"><div class="review-top"><span class="stars">'+stars+'</span><span class="sentiment '+r.sentiment+'">'+sentimentLabels[r.sentiment]+'</span></div><div class="review-text">'+r.text+'</div><div class="review-meta"><span>📅 '+r.date+'</span><span>📱 '+r.platform+'</span></div></div>';
+}).join('');
+grid.innerHTML='<div class="detail-card"><div class="section-title">情感分布</div><div class="pie-chart-container"><canvas id="pieChart"></canvas></div></div><div class="detail-card"><div class="section-title">痛点列表</div><div class="pain-list">'+painHtml+'</div></div><div class="detail-card"><div class="section-title">新功能动态</div><div class="feature-list">'+featHtml+'</div></div><div class="detail-card"><div class="section-title">近期评论 <span style="font-size:13px;color:#94a3b8;font-weight:400">('+cReviews.length+'条)</span></div><div class="review-list">'+revHtml+'</div></div>';
+showView('competitorDetail');
+setTimeout(function(){renderPieChart(c)},50);
+}
+
+function renderPieChart(c){
+var ctx=document.getElementById('pieChart');
+if(!ctx)return;
+if(pieChartInstance)pieChartInstance.destroy();
+pieChartInstance=new Chart(ctx,{
+type:'doughnut',
+data:{
+labels:['正面','中性','负面'],
+datasets:[{
+data:[c.positive,c.neutral,c.negative],
+backgroundColor:['#22c55e','#94a3b8','#ef4444'],
+borderWidth:3,
+borderColor:'#fff'
+}]
+},
+options:{
+responsive:true,
+maintainAspectRatio:false,
+cutout:'55%',
+plugins:{
+legend:{position:'bottom',labels:{padding:16,usePointStyle:true,pointStyleWidth:10,font:{size:13}}},
+tooltip:{callbacks:{label:function(ctx){return ctx.label+': '+ctx.parsed+'%'}}}
+}
+}
+});
+}
+
+function showStatDetail(type){
+currentStatType=type;
+currentStatPage=1;
+renderStatDetail();
+showView('statDetail');
+}
+
+function renderStatDetail(){
+var content=document.getElementById('statDetailContent');
+var html='';
+if(currentStatType==='reviews'){
+var total=allReviews.length;
+var totalPages=Math.ceil(total/PAGE_SIZE);
+html+='<div class="list-page-header"><h2>本周评论详情</h2><div class="count">共 '+total+' 条评论</div></div>';
+html+='<div class="review-card-list">';
+var start=(currentStatPage-1)*PAGE_SIZE;
+var pageData=allReviews.slice(start,start+PAGE_SIZE);
+pageData.forEach(function(r){
+var c=competitors.find(function(x){return x.id===r.competitorKey});
+var stars='';
+for(var i=0;i<5;i++)stars+=i<r.stars?'★':'☆';
+html+='<div class="review-card"><div class="rc-top"><span class="rc-app">'+c.icon+' '+c.name+'</span><span><span class="stars">'+stars+'</span> <span class="sentiment '+r.sentiment+'" style="margin-left:8px">'+sentimentLabels[r.sentiment]+'</span></span></div><div class="rc-text">'+r.text+'</div><div class="rc-meta"><span>📅 '+r.date+'</span><span>📱 '+r.platform+'</span></div></div>';
+});
+html+='</div>';
+html+=renderPagination(totalPages);
+}else if(currentStatType==='reports'){
+var total=reports.length;
+var totalPages=Math.ceil(total/PAGE_SIZE);
+html+='<div class="list-page-header"><h2>累计周报</h2><div class="count">共 '+total+' 份周报</div></div>';
+html+='<div class="report-card-list">';
+var start=(currentStatPage-1)*PAGE_SIZE;
+var pageData=reports.slice(start,start+PAGE_SIZE);
+pageData.forEach(function(r){
+html+='<div class="report-card" onclick="showReportDetail('+r.id+')"><div class="rc-period">第 #'+r.id+' 期 · '+r.dateStr+'</div><div class="rc-summary">'+r.summary+'</div></div>';
+});
+html+='</div>';
+html+=renderPagination(totalPages);
+}else if(currentStatType==='painpoints'){
+var total=allPainPoints.length;
+var totalPages=Math.ceil(total/PAGE_SIZE);
+html+='<div class="list-page-header"><h2>发现痛点</h2><div class="count">共 '+total+' 个痛点</div></div>';
+html+='<div class="pain-card-list">';
+var start=(currentStatPage-1)*PAGE_SIZE;
+var pageData=allPainPoints.slice(start,start+PAGE_SIZE);
+pageData.forEach(function(p){
+html+='<div class="pain-card"><div class="pc-top"><span class="pc-app">'+p.competitor+'</span><span class="severity '+p.severity+'">'+(p.severity==='high'?'高危':p.severity==='medium'?'中危':'低危')+'</span></div><div class="pc-text">'+p.text+'</div><div class="pc-desc">'+p.desc+'</div><div class="pc-meta"><span>'+p.count+' 人反馈</span></div></div>';
+});
+html+='</div>';
+html+=renderPagination(totalPages);
+}
+content.innerHTML=html;
+}
+
+function renderPagination(totalPages){
+if(totalPages<=1)return '';
+var html='<div class="pagination">';
+html+='<button onclick="goStatPage('+(currentStatPage-1)+')" '+(currentStatPage<=1?'disabled':'')+'>上一页</button>';
+var startPage=Math.max(1,currentStatPage-2);
+var endPage=Math.min(totalPages,currentStatPage+2);
+if(startPage>1){
+html+='<button onclick="goStatPage(1)">1</button>';
+if(startPage>2)html+='<span class="page-info">...</span>';
+}
+for(var i=startPage;i<=endPage;i++){
+html+='<button onclick="goStatPage('+i+')" '+(i===currentStatPage?'class="active"':'')+'>'+i+'</button>';
+}
+if(endPage<totalPages){
+if(endPage<totalPages-1)html+='<span class="page-info">...</span>';
+html+='<button onclick="goStatPage('+totalPages+')">'+totalPages+'</button>';
+}
+html+='<button onclick="goStatPage('+(currentStatPage+1)+')" '+(currentStatPage>=totalPages?'disabled':'')+'>下一页</button>';
+html+='</div>';
+return html;
+}
+
+function goStatPage(page){
+currentStatPage=page;
+renderStatDetail();
+window.scrollTo({top:0,behavior:'smooth'});
+}
+
+function showReportDetail(id){
+var r=reportContents[id];
+if(!r){
+showToast('该周报内容暂未录入');
+return;
+}
+var content=document.getElementById('reportDetailContent');
+content.innerHTML='<div class="report-actions"><button class="btn-action btn-copy" onclick="copyReport('+id+')">复制内容</button><button class="btn-action btn-download" onclick="downloadReport('+id+')">下载周报</button></div><div class="report-detail-content">'+r.body+'</div>';
+showView('reportDetail');
+}
+
+function copyReport(id){
+var r=reportContents[id];
+var temp=document.createElement('div');
+temp.innerHTML=r.body;
+var text=temp.innerText;
+navigator.clipboard.writeText(text).then(function(){showToast('已复制到剪贴板')}).catch(function(){showToast('复制失败，请手动复制')});
+}
+
+function downloadReport(id){
+var r=reportContents[id];
+var temp=document.createElement('div');
+temp.innerHTML=r.body;
+var text=temp.innerText;
+var blob=new Blob([text],{type:'text/plain;charset=utf-8'});
+var url=URL.createObjectURL(blob);
+var a=document.createElement('a');
+a.href=url;
+a.download=r.title+'.txt';
+a.click();
+URL.revokeObjectURL(url);
+showToast('周报已下载');
+}
+
+function generateReport(){
+showToast('周报生成中，请稍候...');
+setTimeout(function(){showToast('周报生成完成！')},1500);
+}
+
+function showToast(msg){
+var toast=document.getElementById('toast');
+toast.textContent=msg;
+toast.classList.add('show');
+setTimeout(function(){toast.classList.remove('show')},2500);
+}
+
+renderCompetitorTags();
+renderPainPoints();
+renderReports();
+renderBarChart();
+renderInsightSection();
+
+function renderInsightSection(){
+var section=document.getElementById('insightSection');
+section.innerHTML='<div class="insight-card dynamics"><h3>竞品动态报告</h3>'+
+'<div class="insight-item"><span class="tag blue">同花顺</span>v11.54.04 更新：新增<strong>主力筹码</strong>、<strong>截图提问</strong>、<strong>浮窗盯盘</strong>、<strong>市场情绪风向</strong>、<strong>聪明资金</strong>、<strong>集合竞价盘前总结</strong>等6项新功能，AI+数据能力持续强化</div>'+
+'<div class="insight-item"><span class="tag purple">东方财富</span>v11.1.5 更新：新增<strong>板块/指数AI解读</strong>、<strong>港美股行情升级</strong>（换手率+筹码分布）、<strong>妙想AI大模型</strong>，AI能力与港美股成为重点方向</div>'+
+'<div class="insight-item"><span class="tag green">涨乐财富通</span>v8.8.65 更新：上线<strong>全新行情首页</strong>、<strong>热搜股票榜单</strong>、<strong>专业副图指标</strong>、<strong>交易页面焕新</strong>、<strong>自动拆单</strong>，看盘+交易体验全面升级</div>'+
+'<div class="insight-item"><span class="tag orange">华宝智投</span>v7.0.20 更新：上线<strong>ETF专区+筛选器</strong>、<strong>全局搜索</strong>、<strong>国债逆回购升级</strong>，7.0版本定位"为指数投资而生"</div>'+
+'</div>'+
+'<div class="insight-card opportunity"><h3>华宝智投核心机会</h3>'+
+'<div class="insight-item"><span class="tag red">痛点即机会</span>头部竞品<strong>广告过多</strong>（同花顺320人投诉）、<strong>卡顿严重</strong>（280人投诉）是最大痛点，华宝智投<strong>无广告+轻量化</strong>体验可成为核心差异化卖点</div>'+
+'<div class="insight-item"><span class="tag orange">ETF赛道</span>7.0版本聚焦ETF专区，与同花顺/东方财富的<strong>全品类策略</strong>形成差异化，"为指数投资而生"定位清晰，ETF筛选器填补市场空白</div>'+
+'<div class="insight-item"><span class="tag green">智能交易壁垒</span>网格交易、条件单等<strong>智能交易工具</strong>是华宝独有优势，头部竞品均未深度布局，可继续强化"智能交易专家"心智</div>'+
+'<div class="insight-item"><span class="tag blue">AI功能追赶</span>同花顺和东方财富均推出AI大模型功能，华宝智投在AI辅助决策方面仍有差距，建议优先补齐<strong>AI选股/解读</strong>能力</div>'+
+'<div class="opportunity-highlight"><div class="oh-title">本周核心建议</div><div class="oh-text">1. 营销层面：主打"无广告·不卡顿·智能交易"三连击，精准打击同花顺痛点<br>2. 产品层面：ETF专区+筛选器持续深化，增加ETF对比/回测等工具<br>3. 技术层面：优先补齐行情延迟问题，引入AI解读能力缩小与头部差距</div></div>'+
+'</div>';
+}
+</script>
+</body>
+</html>

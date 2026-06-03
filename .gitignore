@@ -1,0 +1,17 @@
+node_modules/
+dist/
+src/
+api/
+.trae/
+tsconfig.json
+tsconfig.node.json
+package.json
+package-lock.json
+vite.config.ts
+tailwind.config.js
+postcss.config.js
+README.md
+LSTM_stock.py
+Untitled-1
+dataset/
+grid_strategy_log.csv
